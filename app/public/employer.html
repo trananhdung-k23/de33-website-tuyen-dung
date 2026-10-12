@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Quản Lý Cho Nhà Tuyển Dụng</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .navbar-custom { background-color: #007bff; color: white; padding: 15px 0; }
+    
+    .btn-cv-disabled {
+      opacity: 0.55;
+      filter: grayscale(50%);
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar-custom">
+    <div class="container d-flex justify-content-between align-items-center">
+      <h4 class="m-0">💼 JOB BOARD PORTAL</h4>
+      <div>
+        <a href="/" class="btn btn-outline-light btn-sm me-2">🎓 Dành Cho Ứng Viên</a>
+        <a href="/employer" class="btn btn-warning btn-sm fw-bold">🏢 Dành Cho Nhà Tuyển Dụng</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <div class="bg-white p-4 rounded shadow-sm mb-4 d-flex justify-content-between align-items-center">
+      <div>
+        <h2>🏢 Cổng Quản Lý Cho Nhà Tuyển Dụng</h2>
+        <p class="text-muted mb-0">Đăng bài tuyển dụng mới và xem danh sách hồ sơ Ứng viên nộp CV</p>
+      </div>
+      <button class="btn btn-warning fw-bold px-4" data-bs-toggle="modal" data-bs-target="#jobModal">+ Đăng Tin Tuyển Dụng Mới</button>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header bg-dark text-white fw-bold">📋 Danh Sách CV Ứng Viên Đã Nộp Tuyển Dụng (<span id="appCount">0</span>)</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Họ Tên Ứng Viên</th>
+              <th>Thông Tin Liên Hệ</th>
+              <th>Vị Trí Ứng Tuyển</th>
+              <th>Hồ Sơ CV</th>
+              <th>Ngày Nộp</th>
+            </tr>
+          </thead>
+          <tbody id="appTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-secondary text-white fw-bold">📌 Các Tin Tuyển Dụng Đã Đăng (<span id="jobCount">0</span>)</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Tiêu Đề Work</th>
+              <th>Công Ty</th>
+              <th>Địa Điểm & Lương</th>
+              <th>Liên Hệ HR</th>
+              <th>Ngày Đăng</th>
+            </tr>
+          </thead>
+          <tbody id="jobTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Đăng Tin Tuyển Dụng -->
+  <div class="modal fade" id="jobModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Đăng Tin Tuyển Dụng Mới</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="jobForm">
+            <div class="mb-3"><label class="form-label">Tiêu đề công việc</label><input type="text" id="jobTitle" class="form-control" required></div>
+            <div class="mb-3"><label class="form-label">Tên công ty</label><input type="text" id="jobCompany" class="form-control" required></div>
+            <div class="mb-3"><label class="form-label">Địa điểm</label><input type="text" id="jobLocation" class="form-control" required></div>
+            <div class="mb-3"><label class="form-label">Lương/Tháng</label><input type="text" id="jobSalary" class="form-control" placeholder="Ví dụ: 10,000,000 VNĐ" required></div>
+            <div class="mb-3"><label class="form-label">Hình thức</label>
+              <select id="jobType" class="form-select">
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+              </select>
+            </div>
+            <div class="mb-3"><label class="form-label">Email HR/Nhà tuyển dụng</label><input type="email" id="jobHrEmail" class="form-control" required></div>
+            <div class="mb-3"><label class="form-label">Số điện thoại HR/Nhà tuyển dụng</label><input type="text" id="jobHrPhone" class="form-control" placeholder="Ví dụ: 0987654321" required></div>
+            <div class="mb-3"><label class="form-label">Mô tả công việc</label><textarea id="jobDesc" class="form-control" rows="3"></textarea></div>
+            <button type="submit" class="btn btn-warning w-100 fw-bold">Đăng Tin Ngay</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    async function loadEmployerData() {
+      const res = await fetch('/api/employer/data');
+      const data = await res.json();
+
+      if(!data.success) return;
+
+      document.getElementById('appCount').innerText = data.applications.length;
+      const appTable = document.getElementById('appTable');
+      appTable.innerHTML = '';
+      data.applications.forEach((app, idx) => {
+        const cvButtonHtml = `<button class="btn btn-sm btn-outline-secondary btn-cv-disabled" disabled>📄 CV ứng viên</button>`;
+
+        appTable.innerHTML += `
+          <tr>
+            <td>${idx + 1}</td>
+            <td class="fw-bold text-primary">${app.candidate_name}</td>
+            <td>${app.email}<br><small class="text-muted">${app.phone || 'Chưa có SĐT'}</small></td>
+            <td><span class="badge bg-secondary">${app.job_title}</span></td>
+            <td>${cvButtonHtml}</td>
+            <td class="small text-muted">${new Date(app.created_at).toLocaleString()}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('jobCount').innerText = data.jobs.length;
+      const jobTable = document.getElementById('jobTable');
+      jobTable.innerHTML = '';
+      data.jobs.forEach(j => {
+        jobTable.innerHTML += `
+          <tr>
+            <td class="fw-bold">${j.title}</td>
+            <td>${j.company}</td>
+            <td>${j.location} | ${j.salary}</td>
+            <td>${j.hr_email}<br><small class="text-muted">📞 ${j.hr_phone || 'Chưa có SĐT'}</small></td>
+            <td class="small text-muted">${new Date(j.created_at).toLocaleDateString()}</td>
+          </tr>
+        `;
+      });
+    }
+
+    document.getElementById('jobForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('jobTitle').value,
+        company: document.getElementById('jobCompany').value,
+        location: document.getElementById('jobLocation').value,
+        salary: document.getElementById('jobSalary').value,
+        type: document.getElementById('jobType').value,
+        hr_email: document.getElementById('jobHrEmail').value,
+        hr_phone: document.getElementById('jobHrPhone').value,
+        description: document.getElementById('jobDesc').value
+      };
+
+      const res = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      alert(data.message);
+      if(data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('jobModal')).hide();
+        document.getElementById('jobForm').reset();
+        loadEmployerData();
+      }
+    });
+
+    loadEmployerData();
+  </script>
+</body>
+</html>

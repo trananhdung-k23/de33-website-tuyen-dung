@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Tuyển Dụng Job Board</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .navbar-custom { background-color: #007bff; color: white; padding: 15px 0; }
+    .job-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; transition: all 0.3s ease; }
+    .badge-type { position: absolute; top: 20px; right: 20px; }
+    
+    /* CSS LÀM MỜ VÀ VÔ HIỆU HÓA JOB ĐÃ NỘP CV */
+    .job-applied {
+      opacity: 0.55;
+      filter: grayscale(40%);
+      background-color: #f8f9fa;
+      border: 1px dashed #adb5bd;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar-custom">
+    <div class="container d-flex justify-content-between align-items-center">
+      <h4 class="m-0">💼 JOB BOARD PORTAL</h4>
+      <div>
+        <a href="/" class="btn btn-light btn-sm fw-bold me-2">🎓 Dành Cho Ứng Viên</a>
+        <a href="/employer" class="btn btn-outline-light btn-sm">🏢 Dành Cho Nhà Tuyển Dụng</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <div class="bg-white p-4 rounded shadow-sm mb-4 text-center">
+      <h2>🔍 Cổng Tìm Kiếm Việc Làm Cho Ứng Viên</h2>
+      <p class="text-muted">Tìm kiếm công việc mơ ước và gửi CV ứng tuyển trực tiếp tới Nhà tuyển dụng.</p>
+      <div class="row justify-content-center mt-3">
+        <div class="col-md-8 d-flex gap-2">
+          <input type="text" id="searchInput" class="form-control" placeholder="Nhập tên công việc, công ty...">
+          <button onclick="loadJobs()" class="btn btn-primary fw-bold px-4">Tìm Việc Nhanh</button>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="mb-3">Danh Sách Việc Làm Đang Tuyển (<span id="jobCount">0</span>)</h4>
+    <div id="jobList" class="row"></div>
+  </div>
+
+  <!-- Modal Apply -->
+  <div class="modal fade" id="applyModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Nộp Hồ Sơ Ứng Tuyển</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="applyForm">
+            <input type="hidden" id="applyJobId">
+            <div class="mb-3">
+              <label class="form-label">Họ tên ứng viên</label>
+              <input type="text" id="candidateName" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email liên hệ</label>
+              <input type="email" id="candidateEmail" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text" id="candidatePhone" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Link Hồ sơ / CV (Google Drive, LinkedIn...)</label>
+              <input type="url" id="resumeLink" class="form-control" placeholder="https://...">
+            </div>
+            <button type="submit" class="btn btn-success w-100">Gửi Hồ Sơ Ứng Tuyển</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    async function loadJobs() {
+      const q = document.getElementById('searchInput').value;
+      const res = await fetch(`/api/jobs?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      
+      document.getElementById('jobCount').innerText = data.count || 0;
+      const container = document.getElementById('jobList');
+      container.innerHTML = '';
+
+      if (!data.jobs || data.jobs.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted my-4">Hiện không có công việc nào.</div>';
+        return;
+      }
+
+      data.jobs.forEach(job => {
+        const isApplied = job.is_applied === 1 || job.is_applied === true;
+        const cardClass = isApplied ? 'job-card job-applied' : 'job-card';
+        const buttonHtml = isApplied 
+          ? '<button class="btn btn-secondary btn-sm w-100" disabled>🔒 Đã Đăng Ký Nộp CV</button>'
+          : `<button onclick="openApplyModal(${job.id})" class="btn btn-success btn-sm w-100">📝 Đăng Ký Nộp CV Ứng Tuyển</button>`;
+        const appliedBadge = isApplied 
+          ? '<span class="badge bg-secondary ms-2">Đã đăng ký</span>' 
+          : '';
+
+        container.innerHTML += `
+          <div class="col-md-6">
+            <div class="${cardClass}">
+              <span class="badge bg-info badge-type">${job.type || 'Full-time'}</span>
+              <h5 class="text-primary">${job.title}${appliedBadge}</h5>
+              <p class="text-muted mb-2">🏢 ${job.company}</p>
+              <div class="mb-2">
+                <span class="badge bg-light text-dark border me-2">📍 ${job.location}</span>
+                <span class="badge bg-light text-dark border">💰 ${job.salary}</span>
+              </div>
+              <p class="small text-secondary mb-3">${job.description || ''}</p>
+              ${buttonHtml}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    let applyModal;
+    function openApplyModal(jobId) {
+      document.getElementById('applyJobId').value = jobId;
+      if(!applyModal) applyModal = new bootstrap.Modal(document.getElementById('applyModal'));
+      applyModal.show();
+    }
+
+    document.getElementById('applyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        job_id: document.getElementById('applyJobId').value,
+        candidate_name: document.getElementById('candidateName').value,
+        email: document.getElementById('candidateEmail').value,
+        phone: document.getElementById('candidatePhone').value,
+        resume_link: document.getElementById('resumeLink').value
+      };
+
+      const res = await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      alert(data.message);
+      if (data.success) {
+        applyModal.hide();
+        document.getElementById('applyForm').reset();
+        loadJobs();
+      }
+    });
+
+    loadJobs();
+  </script>
+</body>
+</html>
